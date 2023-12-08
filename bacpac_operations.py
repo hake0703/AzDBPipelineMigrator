@@ -1,4 +1,4 @@
-import os, time
+import os, time, subprocess
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.sql import SqlManagementClient
 from azure.storage.blob import BlobServiceClient, BlobClient
@@ -32,3 +32,44 @@ def export_bacpac(database_name, storage_account_name, container_name, storage_a
     os.remove(bacpac_name)
 
     return blob_client
+
+def import_bacpac_to_database(bacpac_url, server_name, database_name, admin_login, admin_password, sqlpackage_path):
+    # Command to import BACPAC into a new database
+    command = [
+        sqlpackage_path,  # Path to SqlPackage.exe
+        "/a:Import",  # Action to perform: Import
+        f"/sf:{bacpac_url}",  # Source File: URL of the BACPAC file
+        f"/tsn:{server_name}",  # Target Server Name: Name of the SQL Server instance
+        f"/tdn:{database_name}",  # Target Database Name: Name of the database to import into
+        f"/tu:{admin_login}",  # Target User: Login for the SQL Server instance
+        f"/tp:{admin_password}"  # Target Password: Password for the SQL Server instance
+    ]
+
+    # Run the command
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Check if the command was successful
+    if result.returncode != 0:
+        print(f"Error importing BACPAC: {result.stderr.decode()}")
+    else:
+        print(f"Successfully imported BACPAC into database {database_name}")
+
+def export_dacpac(server_name, database_name, admin_login, admin_password, dacpac_file_path, sqlpackage_path):
+    # Command to export DACPAC from a database
+    command = [
+        sqlpackage_path,  # Path to SqlPackage.exe
+        "/a:Extract",  # Action to perform: Extract
+        f"/ssn:{server_name}",  # Source Server Name: Name of the SQL Server instance
+        f"/sdn:{database_name}",  # Source Database Name: Name of the database to export from
+        f"/su:{admin_login}",  # Source User: Login for the SQL Server instance
+        f"/sp:{admin_password}",  # Source Password: Password for the SQL Server instance
+        f"/tf:{dacpac_file_path}"  # Target File: Path where the DACPAC file will be saved
+    ]
+
+    # Run the command
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if result.returncode != 0:
+        print(f"Error exporting DACPAC: {result.stderr.decode()}")
+    else:
+        print(f"Successfully exported DACPAC to {dacpac_file_path}")

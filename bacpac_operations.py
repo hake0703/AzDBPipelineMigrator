@@ -1,7 +1,9 @@
-import os, time, subprocess
+import time, subprocess
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.sql import SqlManagementClient
 from azure.storage.blob import BlobServiceClient, BlobClient
+import datetime
+from azure.storage.blob import ResourceTypes, AccountSasPermissions
 
 def export_bacpac(database_name, storage_account_name, container_name, storage_account_key, admin_login, admin_password, resource_group_name, server_name, azure_subscription_id) -> BlobClient:
 
@@ -10,10 +12,7 @@ def export_bacpac(database_name, storage_account_name, container_name, storage_a
 
     bacpac_name = f"{database_name}_{time.strftime('%Y%m%d%H%M%S')}.bacpac"
 
-    # Export BACPAC
-    operation = sql_client.databases.export(resource_group_name, server_name, database_name, admin_login, admin_password, bacpac_name)
-    operation.wait()
-
+    # Create a BlobServiceClient object which will be used to create a container client
     blob_service_client = BlobServiceClient(f"https://{storage_account_name}.blob.core.windows.net", credential=storage_account_key)
 
     # Get a client that can interact with the specified container in Azure Blob Storage.
@@ -24,12 +23,28 @@ def export_bacpac(database_name, storage_account_name, container_name, storage_a
     # This ensures that the container exists before the script tries to upload a blob to it.
     container_client.create_container()
 
-    # Upload BACPAC to blob storage
-    blob_client = container_client.get_blob_client(bacpac_name)
-    with open(bacpac_name, "rb") as data:
-        blob_client.upload_blob(data)
+    def generate_account_sas(account_name, account_key, resource_types, permission, expiry):
+        # Implementation of generate_account_sas function goes here
+        pass
 
-    os.remove(bacpac_name)
+
+    # Create a blob client using the blob name from above
+    blob_client = container_client.get_blob_client(bacpac_name)
+
+    # Build the SAS URL for the blob
+    sas_token = generate_account_sas(
+        blob_service_client.account_name,
+        account_key=storage_account_key,
+        resource_types=ResourceTypes(object=True),
+        permission=AccountSasPermissions(read=True),
+        expiry=datetime.utcnow() + datetime.timedelta(hours=1)
+    )
+
+    bacpac_url = blob_client.url + "?" + sas_token
+
+    # Export BACPAC
+    operation = sql_client.databases.export(resource_group_name, server_name, database_name, admin_login, admin_password, bacpac_url)
+    operation.wait()
 
     return blob_client
 

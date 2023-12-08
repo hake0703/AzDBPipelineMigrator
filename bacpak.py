@@ -39,10 +39,10 @@ def export_bacpac(database_name, storage_account_name, container_name, storage_a
     # Clean up local BACPAC file
     os.remove(bacpac_name)
 
-    return f"BACPAC file exported to: {storage_account_name}/{container_name}/{bacpac_name}"
+    return f"{storage_account_name}/{container_name}/{bacpac_name}"
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Export BACPAC from Azure SQL Database.')
+    parser = argparse.ArgumentParser(description='Export a BACPAC from Azure SQL Database.')
     parser.add_argument('config', type=str, help='Path to the configuration file.')
 
     args = parser.parse_args()
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         config['admin_password'],
         config['resource_group_name'],
         config['server_name'],
-        config['azure_subscription_id']
+        config['subscription_id']
     )
 
-    print(result)
+    print(f"BACPAC file exported to the following storage account location: {result}")

@@ -1,13 +1,18 @@
+import os, time, json, argparse
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.sql import SqlManagementClient
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-import os
-import time
 
-def export_bacpac(database_name, storage_account_name, container_name, storage_account_key, admin_login, admin_password, resource_group_name, server_name):
+
+def load_config(config_file_path):
+    with open(config_file_path, 'r') as f:
+        config = json.load(f)
+    return config
+
+def export_bacpac(database_name, storage_account_name, container_name, storage_account_key, admin_login, admin_password, resource_group_name, server_name, azure_subscription_id):
     # Initialize SQL client
     credential = DefaultAzureCredential()
-    sql_client = SqlManagementClient(credential, "<YourSubscriptionId>")
+    sql_client = SqlManagementClient(credential, azure_subscription_id)
 
     # Generate BACPAC name based on database name
     bacpac_name = f"{database_name}_{time.strftime('%Y%m%d%H%M%S')}.bacpac"
@@ -37,25 +42,24 @@ def export_bacpac(database_name, storage_account_name, container_name, storage_a
     return f"BACPAC file exported to: {storage_account_name}/{container_name}/{bacpac_name}"
 
 if __name__ == "__main__":
-    # Replace with your actual values
-    database_name = "<YourDatabaseName>"
-    storage_account_name = "<YourStorageAccountName>"
-    container_name = "<YourContainerName>"
-    storage_account_key = "<YourStorageAccountKey>"
-    admin_login = "<YourAdminLogin>"
-    admin_password = "<YourAdminPassword>"
-    resource_group_name = "<YourResourceGroupName>"
-    server_name = "<YourSqlServerName>"
+    parser = argparse.ArgumentParser(description='Export BACPAC from Azure SQL Database.')
+    parser.add_argument('config', type=str, help='Path to the configuration file.')
+
+    args = parser.parse_args()
+
+    # Load the configuration from the .json file
+    config = load_config(args.config)
 
     result = export_bacpac(
-        database_name,
-        storage_account_name,
-        container_name,
-        storage_account_key,
-        admin_login,
-        admin_password,
-        resource_group_name,
-        server_name
+        config['database_name'],
+        config['storage_account_name'],
+        config['container_name'],
+        config['storage_account_key'],
+        config['admin_login'],
+        config['admin_password'],
+        config['resource_group_name'],
+        config['server_name'],
+        config['azure_subscription_id']
     )
 
     print(result)
